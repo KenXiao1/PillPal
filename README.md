@@ -340,7 +340,3 @@ Potential features for future development:
 ## Support
 
 For issues, questions, or feature requests, please contact the development team or open an issue in the repository.
-
-## 📄 许可证
-
-本项目采用 GPL-3.0 license 许可证 - 查看 [LICENSE](LICENSE) 文件了解详情。
