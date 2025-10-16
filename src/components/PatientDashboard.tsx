@@ -1,6 +1,13 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { supabase, Medication, Schedule, DoseLog, CaregiverConnection, Profile } from '../lib/supabase';
+import {
+  supabase,
+  Medication,
+  Schedule,
+  DoseLog,
+  CaregiverConnection,
+  Profile,
+} from '../lib/supabase';
 import {
   Clock,
   Pill,
@@ -286,6 +293,57 @@ export function PatientDashboard() {
     },
   };
 
+  const handleToggleCaregiverNotifications = async (connectionId: string, currentValue: boolean) => {
+    if (!profile?.id) return;
+
+    try {
+      setCaregiverActionId(connectionId);
+      setCaregiverError(null);
+
+      const { error } = await supabase
+        .from('caregiver_connections')
+        .update({ notify_missed_doses: !currentValue })
+        .eq('id', connectionId);
+
+      if (error) throw error;
+
+      await loadCaregivers(profile.id);
+    } catch (error) {
+      console.error('Error updating caregiver notifications:', error);
+      setCaregiverError('Unable to update notification preference');
+    } finally {
+      setCaregiverActionId(null);
+    }
+  };
+
+  const handleRemoveCaregiver = async (connectionId: string) => {
+    if (!profile?.id) return;
+
+    try {
+      setCaregiverActionId(connectionId);
+      setCaregiverError(null);
+
+      const { error } = await supabase
+        .from('caregiver_connections')
+        .delete()
+        .eq('id', connectionId);
+
+      if (error) throw error;
+
+      await loadCaregivers(profile.id);
+    } catch (error) {
+      console.error('Error removing caregiver:', error);
+      setCaregiverError('Unable to remove caregiver right now');
+    } finally {
+      setCaregiverActionId(null);
+    }
+  };
+
+  const handleCaregiverAdded = async () => {
+    if (!profile?.id) return;
+    await loadCaregivers(profile.id);
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -362,7 +420,7 @@ export function PatientDashboard() {
                   </div>
                 </div>
 
-                <WeeklyOverview counts={weeklyMedicationCounts} />
+                <WeeklyOverview counts={weeklyMedicationCounts} currentDay={currentDate.getDay()} />
 
                 {upcomingDoses.length === 0 ? (
                   <div className="text-center py-16">
@@ -517,7 +575,7 @@ export function PatientDashboard() {
       {showAddCaregiver && profile?.id && (
         <AddCaregiverModal
           onClose={() => setShowAddCaregiver(false)}
-          onAdded={() => loadCaregivers(profile.id!)}
+          onAdded={handleCaregiverAdded}
         />
       )}
     </div>
@@ -676,6 +734,303 @@ function AddMedicationModal({ onClose, onSuccess }: { onClose: () => void; onSuc
               className="flex-1 px-4 py-2.5 bg-teal-500 text-white rounded-lg font-medium hover:bg-teal-600 transition disabled:opacity-50"
             >
               {loading ? 'Adding...' : 'Add Medication'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function WeeklyOverview({ counts, currentDay }: { counts: Record<number, number>; currentDay: number }) {
+  const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+  return (
+    <div className="mb-6">
+      <div className="flex justify-between items-center mb-3">
+        <div className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Weekly Outlook</div>
+        <div className="text-xs text-gray-500">Scheduled doses by day</div>
+      </div>
+      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
+        {days.map((label, index) => {
+          const count = counts[index] ?? 0;
+          const isToday = currentDay === index;
+          return (
+            <div
+              key={label}
+              className={`rounded-xl border px-4 py-3 flex flex-col gap-2 transition ${
+                isToday
+                  ? 'border-teal-400 bg-teal-50 text-teal-800 shadow-sm'
+                  : 'border-gray-200 bg-white text-gray-700'
+              }`}
+            >
+              <div className="text-xs font-medium uppercase tracking-wide">{label}</div>
+              <div className="text-2xl font-semibold">{count}</div>
+              <div className="text-xs text-gray-500">doses</div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+interface CaregiversPanelProps {
+  caregivers: CaregiverConnectionWithProfile[];
+  loading: boolean;
+  onAdd: () => void;
+  onToggleNotifications: (connectionId: string, currentValue: boolean) => Promise<void> | void;
+  onRemove: (connectionId: string) => Promise<void> | void;
+  actionId: string | null;
+  error: string | null;
+}
+
+function CaregiversPanel({
+  caregivers,
+  loading,
+  onAdd,
+  onToggleNotifications,
+  onRemove,
+  actionId,
+  error,
+}: CaregiversPanelProps) {
+  return (
+    <div className="bg-white rounded-xl shadow-sm p-6">
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <div className="flex items-center gap-3">
+            <Users className="w-5 h-5 text-gray-700" />
+            <h2 className="text-xl font-bold text-gray-900">Caregivers</h2>
+          </div>
+          <p className="text-xs text-gray-500 mt-1">
+            Share your schedule to keep family informed and optionally notify them about missed doses.
+          </p>
+        </div>
+        <button
+          onClick={onAdd}
+          className="flex items-center gap-2 px-3 py-2 bg-teal-500 text-white rounded-lg text-sm font-medium hover:bg-teal-600 transition"
+        >
+          <UserPlus className="w-4 h-4" />
+          Add
+        </button>
+      </div>
+
+      {error && (
+        <div className="mb-4 flex items-center gap-2 text-sm text-amber-600 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
+          <AlertCircle className="w-4 h-4" />
+          {error}
+        </div>
+      )}
+
+      {loading ? (
+        <div className="flex items-center justify-center py-8 text-gray-500">
+          <Loader2 className="w-5 h-5 animate-spin mr-2" /> Loading caregivers...
+        </div>
+      ) : caregivers.length === 0 ? (
+        <div className="text-center border-2 border-dashed border-gray-200 rounded-xl py-10 px-4 text-sm text-gray-500">
+          <Users className="w-10 h-10 text-gray-300 mx-auto mb-3" />
+          No caregivers connected yet.
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {caregivers.map((connection) => {
+            const caregiver = connection.caregiver_profile;
+            const isProcessing = actionId === connection.id;
+
+            return (
+              <div
+                key={connection.id}
+                className="border border-gray-200 rounded-xl px-4 py-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
+              >
+                <div>
+                  <div className="flex items-center gap-2">
+                    <p className="font-semibold text-gray-900">
+                      {caregiver?.full_name ?? 'Caregiver'}
+                    </p>
+                    {connection.notify_missed_doses ? (
+                      <span className="text-xs text-teal-600 bg-teal-50 border border-teal-100 px-2 py-0.5 rounded-full flex items-center gap-1">
+                        <Bell className="w-3 h-3" /> Alerts on
+                      </span>
+                    ) : (
+                      <span className="text-xs text-gray-500 bg-gray-100 border border-gray-200 px-2 py-0.5 rounded-full">
+                        Alerts off
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-sm text-gray-600">{caregiver?.email}</p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Relationship: {connection.relationship}
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => onToggleNotifications(connection.id, connection.notify_missed_doses)}
+                    disabled={isProcessing}
+                    className={`flex items-center gap-2 border rounded-lg px-3 py-2 text-sm font-medium transition ${
+                      connection.notify_missed_doses
+                        ? 'border-teal-200 text-teal-600 hover:bg-teal-50'
+                        : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+                    } ${isProcessing ? 'opacity-60 cursor-not-allowed' : ''}`}
+                  >
+                    {connection.notify_missed_doses ? (
+                      <ToggleRight className="w-4 h-4" />
+                    ) : (
+                      <ToggleLeft className="w-4 h-4" />
+                    )}
+                    {connection.notify_missed_doses ? 'Disable Alerts' : 'Enable Alerts'}
+                  </button>
+
+                  <button
+                    onClick={() => onRemove(connection.id)}
+                    disabled={isProcessing}
+                    className={`flex items-center gap-2 border border-red-200 text-red-600 rounded-lg px-3 py-2 text-sm font-medium hover:bg-red-50 transition ${
+                      isProcessing ? 'opacity-60 cursor-not-allowed' : ''
+                    }`}
+                  >
+                    {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                    Remove
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function AddCaregiverModal({ onClose, onAdded }: { onClose: () => void; onAdded: () => void }) {
+  const { user } = useAuth();
+  const [email, setEmail] = useState('');
+  const [relationship, setRelationship] = useState('Family');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!user) return;
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const normalizedEmail = email.trim().toLowerCase();
+      if (!normalizedEmail) {
+        setError('Please provide a caregiver email.');
+        setLoading(false);
+        return;
+      }
+
+      const { data: caregiverProfile, error: profileError } = await supabase
+        .from('profiles')
+        .select('id, email, full_name, role')
+        .eq('email', normalizedEmail)
+        .eq('role', 'caregiver')
+        .maybeSingle();
+
+      if (profileError) throw profileError;
+
+      if (!caregiverProfile) {
+        setError('Caregiver account not found. Ask them to sign up first.');
+        setLoading(false);
+        return;
+      }
+
+      const { error: insertError } = await supabase.from('caregiver_connections').insert({
+        patient_id: user.id,
+        caregiver_id: caregiverProfile.id,
+        relationship: relationship || 'Caregiver',
+        notify_missed_doses: true,
+      });
+
+      if (insertError) {
+        if ((insertError as any).code === '23505') {
+          setError('This caregiver is already connected.');
+        } else {
+          throw insertError;
+        }
+        setLoading(false);
+        return;
+      }
+
+      await onAdded();
+      onClose();
+    } catch (err) {
+      console.error('Error adding caregiver:', err);
+      setError('Unable to add caregiver right now. Please try again later.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center px-4">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <UserPlus className="w-5 h-5 text-teal-600" />
+            <h2 className="text-xl font-semibold text-gray-900">Add Caregiver</h2>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <p className="text-sm text-gray-600 mb-4">
+          Invite a caregiver so they can monitor your medication schedule and receive notifications when doses are missed.
+        </p>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Caregiver Email</label>
+            <div className="relative">
+              <Mail className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                className="w-full pl-9 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                placeholder="caregiver@example.com"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Relationship</label>
+            <input
+              type="text"
+              value={relationship}
+              onChange={(e) => setRelationship(e.target.value)}
+              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+              placeholder="e.g., Daughter, Son, Nurse"
+            />
+          </div>
+
+          {error && (
+            <div className="flex items-center gap-2 text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
+              <AlertCircle className="w-4 h-4" />
+              {error}
+            </div>
+          )}
+
+          <div className="flex gap-3 pt-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 px-4 py-2.5 border-2 border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={loading}
+              className="flex-1 px-4 py-2.5 bg-teal-500 text-white rounded-lg font-medium hover:bg-teal-600 transition disabled:opacity-50 flex items-center justify-center gap-2"
+            >
+              {loading && <Loader2 className="w-4 h-4 animate-spin" />}
+              Add Caregiver
             </button>
           </div>
         </form>
