@@ -340,11 +340,3 @@ Potential features for future development:
 ## Support
 
 For issues, questions, or feature requests, please contact the development team or open an issue in the repository.
-
-## License
-
-[Specify your license here]
-
-## Acknowledgments
-
-Built with modern web technologies to support elderly patients and their caregivers in managing chronic conditions effectively.
