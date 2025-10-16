@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase, Medication, Schedule, DoseLog } from '../lib/supabase';
-import { Clock, Pill, Check, X, Plus, Calendar, Users, LogOut } from 'lucide-react';
+import { Clock, Pill, Check, X, Plus, Calendar, Users, LogOut, BookOpen } from 'lucide-react';
+import { HealthEducation } from './HealthEducation';
 
 interface MedicationWithSchedule extends Medication {
   schedules: Schedule[];
@@ -21,6 +22,7 @@ export function PatientDashboard() {
   const [upcomingDoses, setUpcomingDoses] = useState<UpcomingDose[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddMedication, setShowAddMedication] = useState(false);
+  const [showHealthEducation, setShowHealthEducation] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -176,8 +178,20 @@ export function PatientDashboard() {
       </nav>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-2 space-y-6">
+        {showHealthEducation ? (
+          <div>
+            <button
+              onClick={() => setShowHealthEducation(false)}
+              className="mb-6 flex items-center gap-2 text-gray-600 hover:text-gray-900 transition"
+            >
+              <X className="w-5 h-5" />
+              Back to Dashboard
+            </button>
+            <HealthEducation />
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="lg:col-span-2 space-y-6">
             <div className="bg-white rounded-xl shadow-sm p-6">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-2xl font-bold text-gray-900">Today's Schedule</h2>
@@ -310,8 +324,25 @@ export function PatientDashboard() {
                 Add Caregiver
               </button>
             </div>
+
+            <div className="bg-gradient-to-br from-teal-500 to-cyan-500 rounded-xl shadow-sm p-6 text-white">
+              <div className="flex items-center gap-3 mb-3">
+                <BookOpen className="w-6 h-6" />
+                <h3 className="text-lg font-bold">Health Education</h3>
+              </div>
+              <p className="text-sm text-teal-50 mb-4">
+                Learn about managing your conditions, healthy living tips, diet advice, and safe exercise routines.
+              </p>
+              <button
+                onClick={() => setShowHealthEducation(true)}
+                className="w-full px-4 py-2 bg-white text-teal-600 rounded-lg font-medium hover:bg-teal-50 transition"
+              >
+                Explore Articles
+              </button>
+            </div>
           </div>
         </div>
+        )}
       </main>
 
       {showAddMedication && (

@@ -64,3 +64,33 @@ export interface Alert {
   read_at: string | null;
   created_at: string;
 }
+
+export interface HealthTopic {
+  id: string;
+  title: string;
+  category: 'hypertension' | 'diabetes' | 'heart_health' | 'general' | 'exercise' | 'diet' | 'medication_safety';
+  description: string;
+  icon: string;
+  order_index: number;
+  created_at: string;
+}
+
+export interface HealthArticle {
+  id: string;
+  topic_id: string;
+  title: string;
+  content: string;
+  summary: string;
+  reading_time_minutes: number;
+  published_at: string;
+  created_at: string;
+}
+
+export interface UserArticleProgress {
+  id: string;
+  user_id: string;
+  article_id: string;
+  read_at: string;
+  bookmarked: boolean;
+  created_at: string;
+}

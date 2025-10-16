@@ -7,6 +7,7 @@ interface PatientWithMedications extends Profile {
   medications?: Medication[];
   missedDoses?: number;
   todayCompliance?: number;
+  relationship?: string;
 }
 
 interface AlertWithDetails extends Alert {
@@ -47,6 +48,7 @@ export function CaregiverDashboard() {
 
       for (const connection of connections || []) {
         const patient = (connection as any).profiles;
+        const relationship = (connection as any).relationship;
 
         const { data: medications } = await supabase
           .from('medications')
@@ -78,6 +80,7 @@ export function CaregiverDashboard() {
           medications: medications || [],
           missedDoses,
           todayCompliance: totalDoses > 0 ? Math.round((takenDoses / totalDoses) * 100) : 100,
+          relationship,
         });
       }
 
@@ -208,6 +211,11 @@ export function CaregiverDashboard() {
                             {patient.full_name}
                           </h3>
                           <p className="text-sm text-gray-600">{patient.email}</p>
+                          {patient.relationship && (
+                            <p className="text-xs text-blue-600 font-medium mt-1">
+                              Relationship: {patient.relationship}
+                            </p>
+                          )}
                         </div>
                         <div className="text-right">
                           <div className="text-2xl font-bold text-gray-900">
