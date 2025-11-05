@@ -123,7 +123,7 @@ export function PatientDashboard() {
 
       if (error) throw error;
 
-      setCaregivers((data ?? []) as CaregiverConnectionWithProfile[]);
+      setCaregivers((data ?? []) as unknown as CaregiverConnectionWithProfile[]);
       setCaregiverError(null);
     } catch (error) {
       console.error('Error loading caregivers:', error);

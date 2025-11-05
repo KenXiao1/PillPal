@@ -1,10 +1,13 @@
+import { useState } from 'react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { AuthForm } from './components/AuthForm';
 import { PatientDashboard } from './components/PatientDashboard';
 import { CaregiverDashboard } from './components/CaregiverDashboard';
+import { AdvertisementPage } from './components/AdvertisementPage';
 
 function AppContent() {
   const { user, profile, loading } = useAuth();
+  const [showApp, setShowApp] = useState(false);
 
   if (loading) {
     return (
@@ -15,7 +18,10 @@ function AppContent() {
   }
 
   if (!user || !profile) {
-    return <AuthForm />;
+    if (!showApp) {
+      return <AdvertisementPage onGetStarted={() => setShowApp(true)} />;
+    }
+    return <AuthForm onBack={() => setShowApp(false)} />;
   }
 
   if (profile.role === 'patient') {

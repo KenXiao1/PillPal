@@ -2,7 +2,11 @@ import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Pill, UserPlus, LogIn } from 'lucide-react';
 
-export function AuthForm() {
+interface AuthFormProps {
+  onBack?: () => void;
+}
+
+export function AuthForm({ onBack }: AuthFormProps) {
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -167,6 +171,14 @@ export function AuthForm() {
 
         <div className="mt-8 text-center text-sm text-gray-600">
           <p>Helping patients stay on track with their medications</p>
+          {onBack && (
+            <button
+              onClick={onBack}
+              className="mt-4 text-teal-600 hover:text-teal-700 font-medium transition"
+            >
+              Back to home
+            </button>
+          )}
         </div>
       </div>
     </div>
